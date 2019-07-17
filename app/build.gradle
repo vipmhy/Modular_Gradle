@@ -1,0 +1,110 @@
+apply plugin: 'com.android.application'
+
+println("hello gradle")
+
+// Groovy弱类型语言
+rootProject.ext.username = 123 // 类型推导 糖果语言
+// 缩写
+println "${username}"
+// 正确的写法
+println "${rootProject.ext.username}"
+
+// 赋值与引用
+def androidId = rootProject.ext.androidId
+def appId = rootProject.ext.appId
+def support = rootProject.ext.dependencies
+def url = rootProject.ext.url
+
+android {
+    compileSdkVersion androidId.compileSdkVersion
+    buildToolsVersion androidId.buildToolsVersion
+    defaultConfig {
+        applicationId appId.app
+        minSdkVersion androidId.minSdkVersion
+        targetSdkVersion androidId.targetSdkVersion
+        versionCode androidId.versionCode
+        versionName androidId.versionName
+        // 开启分包
+        multiDexEnabled true
+        // 只保留指定语言资源
+        resConfig('zh-rCN')
+        // 配置so库CPU架构（真机arm，模拟器x86）
+        // x86 x86-64 mips mips64
+        ndk {
+            // 真机
+            abiFilters('armeabi', 'armeabi-v7a')
+            // 为了模拟器启动
+//            abiFilters('x86', 'x86-64')
+        }
+
+        //源集 - 设置源集的属性，更改源集的 java 目录或者自由目录等
+        sourceSets {
+            main {
+                if (!isRelease) {
+                    // 如果是组件化模式，需要单独运行时
+                    mainfest.srcFile 'src/main/AmdroidManifest.xml'
+                    java.srcDirs = ['src/main/java']
+                    res.srcDirs = ['src/main/res']
+                    resources.srcDirs = ['src/main/resources']
+                    aidl.srcDirs = ['src/mian/aidl']
+                    assets.srcDirs = ['src/main/assets']
+                } else {
+                    // 集成化模式，整个项目打包
+                    manifest.srcFile 'src/main/AndroidManifest.xml'
+                }
+            }
+        }
+    }
+
+    // 签名打包Gradle配置
+    signingConfigs {
+        debug {
+            storeFile file('C:/Users/HZ-ANZH/.android/debug.keystore')
+            storePassword "android"
+            keyAlias "androiddebugkey"
+            keyPassword "android"
+        }
+
+        release {
+            // 签名证书文件
+            storeFile file('D:/Users/Administrator/.android/debug.keystore')
+            // 签名证书的类型
+            storeType "netease"
+            // 签名证书文件的密码
+            storePassword "123"
+            // 签名证书文件的秘钥别名
+            keyAlias "netease"
+            // 签名证书中秘钥别名的密码
+            keyPassword "123"
+            // 是否开启v2打包
+            v2SigningEnabled true
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+            buildConfigField("String", "URL", "\"${url.debug}\"")
+        }
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+            buildConfigField("String", "URL", "\"${url.release}\"")
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    // 依赖library库
+    implementation project(":library")
+//    implementation support.appcompat
+//    implementation support.recyclerview
+//    implementation support.constraint
+
+    // 依赖第三方库最简洁的方式
+    support.each { k, v -> implementation v }
+}
